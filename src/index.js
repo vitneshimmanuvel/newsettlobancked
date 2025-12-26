@@ -5,7 +5,12 @@ const { PrismaClient } = require('@prisma/client');
 const { sendLeadNotification } = require('./email');
 
 const app = express();
-const prisma = new PrismaClient();
+
+// Initialize Prisma with connection pooling for serverless
+const prisma = new PrismaClient({
+  errorFormat: 'pretty',
+  log: ['error', 'warn']
+});
 
 // Middleware
 app.use(cors({
@@ -45,24 +50,33 @@ app.post('/api/leads', async (req, res) => {
       });
     }
 
-    // Create lead in database
-    const lead = await prisma.lead.create({
-      data: {
-        name,
-        email,
-        phone,
-        company: company || null,
-        message: message || null,
-        demo: demo || null,
-        source
-      }
-    });
+    // Create lead in database with error handling
+    let lead;
+    try {
+      lead = await prisma.lead.create({
+        data: {
+          name,
+          email,
+          phone,
+          company: company || null,
+          message: message || null,
+          demo: demo || null,
+          source
+        }
+      });
+      console.log(`✅ New lead saved: ${lead.name} (${lead.source})`);
+    } catch (dbError) {
+      console.error('❌ Database error:', dbError.message);
+      return res.status(500).json({ 
+        success: false, 
+        error: 'Database error: ' + dbError.message 
+      });
+    }
 
-    console.log(`✅ New lead saved: ${lead.name} (${lead.source})`);
-
-    // Send email notification (async, don't wait for it)
+    // Send email notification (async, non-blocking)
     sendLeadNotification(lead).catch(err => {
-      console.error('Email notification failed:', err);
+      console.error('Email notification failed:', err.message);
+      // Don't fail the response if email fails
     });
 
     res.status(201).json({ 
@@ -76,10 +90,10 @@ app.post('/api/leads', async (req, res) => {
     });
 
   } catch (error) {
-    console.error('❌ Error saving lead:', error);
+    console.error('❌ Error in lead submission:', error);
     res.status(500).json({ 
       success: false, 
-      error: 'Failed to submit lead. Please try again.' 
+      error: error.message || 'Failed to submit lead. Please try again.' 
     });
   }
 });
