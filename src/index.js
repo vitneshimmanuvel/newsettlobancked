@@ -12,9 +12,13 @@ const prisma = new PrismaClient({
   log: process.env.NODE_ENV === 'development' ? ['error', 'warn'] : ['error']
 });
 
-// Test database connection on startup
+// Don't block startup - test connection async in background
+let dbConnected = false;
 prisma.$queryRaw`SELECT 1`
-  .then(() => console.log('✅ Database connected successfully'))
+  .then(() => {
+    dbConnected = true;
+    console.log('✅ Database connected successfully');
+  })
   .catch(err => console.error('❌ Database connection failed:', err.message));
 
 // Middleware
