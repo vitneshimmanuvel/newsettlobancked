@@ -6,17 +6,20 @@ const { sendLeadNotification } = require('./email');
 
 const app = express();
 const prisma = new PrismaClient();
-const PORT = process.env.PORT || 5000;
 
 // Middleware
 app.use(cors({
-  origin: ['http://localhost:5173', 'http://localhost:3000', 'http://127.0.0.1:5173'],
-  methods: ['GET', 'POST'],
+  origin: '*',
+  methods: ['GET', 'POST', 'OPTIONS'],
   credentials: true
 }));
 app.use(express.json());
 
 // Health check endpoint
+app.get('/', (req, res) => {
+  res.json({ status: 'ok', message: 'Settlo Backend is running!' });
+});
+
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', message: 'Settlo Backend is running!' });
 });
@@ -94,19 +97,13 @@ app.get('/api/leads', async (req, res) => {
   }
 });
 
-// Start server
-app.listen(PORT, () => {
-  console.log(`
-  ╔═══════════════════════════════════════════════╗
-  ║   🚀 Settlo Backend Server                    ║
-  ║   Running on: http://localhost:${PORT}          ║
-  ║   Database: Neon PostgreSQL                   ║
-  ╚═══════════════════════════════════════════════╝
-  `);
-});
+// For local development
+if (process.env.NODE_ENV !== 'production') {
+  const PORT = process.env.PORT || 5000;
+  app.listen(PORT, () => {
+    console.log(`🚀 Server running on http://localhost:${PORT}`);
+  });
+}
 
-// Graceful shutdown
-process.on('SIGINT', async () => {
-  await prisma.$disconnect();
-  process.exit();
-});
+// Export for Vercel
+module.exports = app;

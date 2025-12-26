@@ -1,5 +1,6 @@
 {
   "version": 2,
+  "buildCommand": "npx prisma generate",
   "builds": [
     {
       "src": "src/index.js",
@@ -11,6 +12,5 @@
       "src": "/(.*)",
       "dest": "src/index.js"
     }
-  ],
-  "buildCommand": "npm run build"
+  ]
 }
