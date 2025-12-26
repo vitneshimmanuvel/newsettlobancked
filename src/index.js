@@ -9,8 +9,13 @@ const app = express();
 // Initialize Prisma with connection pooling for serverless
 const prisma = new PrismaClient({
   errorFormat: 'pretty',
-  log: ['error', 'warn']
+  log: process.env.NODE_ENV === 'development' ? ['error', 'warn'] : ['error']
 });
+
+// Test database connection on startup
+prisma.$queryRaw`SELECT 1`
+  .then(() => console.log('✅ Database connected successfully'))
+  .catch(err => console.error('❌ Database connection failed:', err.message));
 
 // Middleware
 app.use(cors({
@@ -25,8 +30,13 @@ app.get('/', (req, res) => {
   res.json({ status: 'ok', message: 'Settlo Backend is running!' });
 });
 
-app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', message: 'Settlo Backend is running!' });
+app.get('/api/health', async (req, res) => {
+  try {
+    await prisma.$queryRaw`SELECT 1`;
+    res.json({ status: 'ok', message: 'Settlo Backend is running!', database: 'connected' });
+  } catch (error) {
+    res.status(500).json({ status: 'error', message: 'Database connection failed', error: error.message });
+  }
 });
 
 // Lead submission endpoint
